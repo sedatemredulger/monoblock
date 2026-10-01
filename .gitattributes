@@ -1,0 +1,17 @@
+# ══════════════════════════════════════════════════════════════════
+#  Satır sonlarına Git KARIŞMASIN.
+#
+#  Git, Windows'ta varsayılan olarak depodaki LF satır sonlarını
+#  diske CRLF olarak yazar. Burada bu zararsız değil: yap.js kaynağı
+#  ÇOK SATIRLI metin eşlemeleriyle dönüştürüyor, örneğin
+#
+#      '  function showAd(title, sub, cb){\n    timerPause();'
+#
+#  CRLF'e çevrilmiş bir çalışma kopyasında bu desen tutmaz; yap.js
+#  "DÖNÜŞÜM UYGULANMADI" diye durur. Deponun taze bir kopyasını alan
+#  biri (ileride bir yazılımcı, ya da yeni bir bilgisayardaki sen)
+#  derleyemez ve sebebini anlamaz.
+#
+#  Bu satır şunu söylüyor: depoda ne varsa diskte de aynısı olsun.
+# ══════════════════════════════════════════════════════════════════
+* -text

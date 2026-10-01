@@ -314,7 +314,7 @@
 <script>
 (function(){
 "use strict";
-var VERSION="1.4.0";  /* MAJOR.MINOR.PATCH */
+var VERSION="1.4.1";  /* MAJOR.MINOR.PATCH */
 try{window.MONOBLOCK_VERSION=VERSION;}catch(e){}
 var m=document.createElement('meta');
 m.name='viewport';
@@ -434,6 +434,11 @@ var PIDX={I:1,J:2,L:3,O:4,S:5,T:6,Z:7};
 var GRAV=[48,43,38,33,28,23,18,13,8,6,5,5,5,4,4,4,3,3,3,2,2,2,2,2,2,2,2,2,2,1];
 function gravSec(lv){ return (lv>=29?1:GRAV[lv])/60; }
 var LINE_PTS=[0,40,100,300,1200];
+/* Seviye basina satir. NES'te 10'du; hizlanma cok dik geliyordu —
+   seviye 9'a (0.10 s/satir) 90 satirda variliyordu. 15'e cikarinca
+   ayni noktaya 130 satirda geliniyor. Her seviyenin HIZI aynen
+   korunuyor (GRAV tablosuna dokunulmadi), yalnizca tirmanis uzadi. */
+var SATIR_BASINA=15;
 var CLEAR_S=.38, ARE_S=.16;
 
 /* ad gating — both conditions must hold within the same run */
@@ -505,14 +510,31 @@ function tamponUygula(){
 }
 function bekliyor(){ return S&&(S.phase==='are'||S.phase==='clearing'); }
 
+/* ── duvar tekmesi (wall kick) ───────────────────────────────────────────
+   Once yoktu: dondurulmus parca duvarin ya da yigin'in icine dusuyorsa
+   hareket tamamen iptal ediliyordu ("authentic NES"). Sonuc, oyuncunun
+   gozunde tutarsizlik: ayni tusa basiyor, parca bazen donuyor bazen
+   donmuyor. Rastgele degildi — parcanin yonune bagliydi. Dikey I parcasi
+   sol duvarda yatay olmaya calisirken 4 hucrenin bir kismi tahtanin
+   disina dusuyor, iptal oluyordu.
+
+   Simdi: dondurme sigmazsa parcayi bir kare yana kaydirip tekrar
+   deniyoruz. I parcasi 4 uzunlugunda oldugu icin 2 kareye kadar
+   gidiyor; digerleri icin 1 kare yeterli. Sira onemli: once yerinde,
+   sonra sola, sonra saga — boylece parca mumkun oldugunca az kayiyor. */
 function rotate(dir){
   if(!S)return;
   if(bekliyor()){ tamponYaz('don',dir); return; }
   if(S.phase!=='play'||S.key==='O')return;
-  var mm=S.mat;
+  var mm=S.mat,i,nx;
   mm=(dir>0)?rotCW(mm):rotCW(rotCW(rotCW(mm)));
-  if(hits(mm,S.x,S.y))return;          /* no wall kicks — authentic NES */
-  S.mat=mm; beep(330,420,.055,.20,'key'); buzz(8);
+  var tekme=(S.key==='I')?[0,-1,1,-2,2]:[0,-1,1];
+  for(i=0;i<tekme.length;i++){
+    nx=S.x+tekme[i];
+    if(!hits(mm,nx,S.y)){
+      S.mat=mm; S.x=nx; beep(330,420,.055,.20,'key'); buzz(8); return;
+    }
+  }
 }
 function move(dx){
   if(!S)return false;
@@ -554,7 +576,7 @@ function finishClear(){
   rekorYakala();
   /* NES: first bump needs min(start*10+10, max(100, start*10-50)), then every 10 */
   var thr=Math.min(S.start*10+10, Math.max(100, S.start*10-50));
-  S.level=(S.lines<thr)?S.start:S.start+1+Math.floor((S.lines-thr)/10);
+  S.level=(S.lines<thr)?S.start:S.start+1+Math.floor((S.lines-thr)/SATIR_BASINA);
   if(S.level>before){ S.levelUps+=S.level-before; chord([440,660,880],90,'land'); }
   S.clearRows=[]; S.phase='are'; S.timer=ARE_S; paint();
 }
@@ -872,12 +894,32 @@ function startMusic(){ if(mt||!cfg.music)return; mi=0;mc=0;mb=0; tick(); }
 function stopMusic(){ if(mt){clearTimeout(mt);mt=null;} }
 
 /* ══════════════════════ touch ══════════════════════ */
-var pt={id:null,x0:0,y0:0,ax:0,t0:0,moved:0,dropped:false},multi=0;
+/* ── jest eksen kilidi ──────────────────────────────────────────────────
+   Eskiden yatay kaydirma ve asagi cekme AYNI ANDA, dahasi FARKLI
+   referans noktalarindan olculuyordu: yatay, ilerleyen bir capadan
+   (pt.ax), dikey ise jestin baslangicindan (pt.y0). Iki hata birden
+   cikiyordu:
+
+   1) Asagi cekerken parmak kacinilmaz olarak birkac piksel yana
+      kayiyor, yatay esik asilinca parca yana adim atiyordu.
+   2) Saga gidip sola donunce baslangica gore toplam yatay mesafe
+      sifira yaklasiyor, dikey birikim ise duruyordu; |dx|<|dy| kosulu
+      saglaniyor ve parca kendiliginden hizli dusmeye basliyordu.
+
+   Simdi jest basinda TEK bir eksene kilitleniyor ve parmak kalkana
+   kadar degismiyor. Olu bolge (OLU) gecilmeden karar verilmiyor;
+   capraz cekislerde baskin yon netlesene kadar bekleniyor, israr
+   ederse buyuk olana karar veriliyor. Capalar degismedi, esikler
+   degismedi — yalnizca ikisi artik birbirine karismiyor.
+
+   pt.eksen:  0 = henuz karar yok   1 = yatay   2 = dikey            */
+var pt={id:null,x0:0,y0:0,ax:0,ay:0,t0:0,moved:0,dropped:false,eksen:0},multi=0;
 well.addEventListener('pointerdown',function(e){
   actx();
   if(!S)return;
   if(pt.id!==null){ multi++; return; }
-  pt.id=e.pointerId; pt.x0=e.clientX; pt.y0=e.clientY; pt.ax=e.clientX;
+  pt.id=e.pointerId; pt.x0=e.clientX; pt.y0=e.clientY;
+  pt.ax=e.clientX; pt.ay=e.clientY; pt.eksen=0;
   pt.t0=performance.now(); pt.moved=0; pt.dropped=false; multi=0;
   well.setPointerCapture(e.pointerId);
 });
@@ -885,23 +927,40 @@ well.addEventListener('pointermove',function(e){
   /* 'are'/'clearing' evresinde de çalışsın: move() girdiyi tamponluyor,
      false döndüğü için çapa (pt.ax) parmağa sabitleniyor, birikme olmuyor. */
   if(pt.id!==e.pointerId||!S||S.phase==='over'||S.phase==='paused')return;
-  var dx=e.clientX-pt.ax, dy=e.clientY-pt.y0;
-  pt.moved=Math.max(pt.moved,Math.abs(e.clientX-pt.x0),Math.abs(dy));
-  var thr=Math.max(16,CELL*.62);
-  while(Math.abs(dx)>=thr){
-    var d=dx>0?1:-1;
-    if(!move(d)){ pt.ax=e.clientX; break; }
-    pt.ax+=d*thr; dx=e.clientX-pt.ax;
+  var adx=Math.abs(e.clientX-pt.x0), ady=Math.abs(e.clientY-pt.y0);
+  pt.moved=Math.max(pt.moved,adx,ady);
+  if(!pt.eksen){
+    var OLU=Math.max(10,CELL*.35), en=Math.max(adx,ady);
+    if(en<OLU)return;                                  /* henuz jest sayilmaz */
+    if(adx>=ady*1.25)      pt.eksen=1;
+    else if(ady>=adx*1.25) pt.eksen=2;
+    else if(en>=OLU*2)     pt.eksen=(adx>=ady)?1:2;    /* capraz israr */
+    else return;                                       /* baskin yon netlesmedi */
   }
-  S.soft=dy>Math.max(26,CELL*1.1)&&Math.abs(e.clientX-pt.x0)<Math.abs(dy);
-  if(S.soft)pt.dropped=true;
+  if(pt.eksen===1){
+    S.soft=false;
+    var dx=e.clientX-pt.ax, thr=Math.max(16,CELL*.62);
+    while(Math.abs(dx)>=thr){
+      var d=dx>0?1:-1;
+      if(!move(d)){ pt.ax=e.clientX; break; }
+      pt.ax+=d*thr; dx=e.clientX-pt.ax;
+    }
+  } else {
+    S.soft=(e.clientY-pt.ay)>Math.max(26,CELL*1.1);
+    if(S.soft)pt.dropped=true;
+  }
 });
 function release(e){
   if(pt.id!==e.pointerId)return;
-  if(S&&(S.phase==='play'||bekliyor())&&pt.moved<12&&
+  /* Hicbir eksene kilitlenmemis ve kisa suren dokunus = dokunma (dondur).
+     Eskiden bu 'pt.moved<12' sihirli sayisiyla olculuyordu; olu bolge
+     esigi (CELL'e bagli) ondan buyuk olabildigi icin arada kalan
+     dokunuslar hicbir sey yapmiyordu. Artik olcut tek: eksen secilmediyse
+     oyuncu kaydirmak istemedi. */
+  if(S&&(S.phase==='play'||bekliyor())&&!pt.eksen&&
      performance.now()-pt.t0<300&&!pt.dropped)rotate(1);
   if(S)S.soft=false;
-  pt.id=null; multi=0;
+  pt.id=null; multi=0; pt.eksen=0;
 }
 well.addEventListener('pointerup',release);
 well.addEventListener('pointercancel',release);

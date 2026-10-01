@@ -1,0 +1,43 @@
+# ══════════════════════════════════════════════════════════════════
+#  ASLA DEPOYA GİRMEYECEKLER — imzalama sırları
+#  Bu dosya kaybolursa ya da bu satırlar silinirse, bir "git add ."
+#  anahtarı ve parolaları herkese açık hale getirebilir.
+# ══════════════════════════════════════════════════════════════════
+*.keystore
+*.jks
+keystore.properties
+!keystore.properties.ornek
+google-services.json
+*.p8
+*.p12
+local.properties
+
+# ── derleme çıktıları ──────────────────────────────────────────────
+node_modules/
+build/
+.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+*.apk
+*.aab
+*.aar
+
+# ── üretilen dosya (kaynak: kaynak/oyun.html) ──────────────────────
+www/index.html
+
+# ── editör ve işletim sistemi ──────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── geçici ─────────────────────────────────────────────────────────
+*.log
+*.tar.gz
+tmp/

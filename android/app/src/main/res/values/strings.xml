@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Monoblock</string>
+    <string name="title_activity_main">Monoblock</string>
+    <string name="package_name">com.dukagames.monoblock</string>
+    <string name="custom_url_scheme">com.dukagames.monoblock</string>
+</resources>

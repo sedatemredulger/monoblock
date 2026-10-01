@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#1f2225</color>
+    <color name="colorPrimaryDark">#1f2225</color>
+    <color name="colorAccent">#f2efe9</color>
+    <!-- Açılış ekranının zemini; capacitor.config.json ile aynı olmalı -->
+    <color name="splashBackground">#1f2225</color>
+</resources>

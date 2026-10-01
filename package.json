@@ -1,0 +1,24 @@
+{
+  "name": "monoblock",
+  "version": "1.4.0",
+  "private": true,
+  "description": "Monoblock — classic falling blocks",
+  "scripts": {
+    "yap": "node yap.js",
+    "senk": "node yap.js && npx cap sync android",
+    "ac": "node yap.js && npx cap sync android && npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.0",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.3",
+    "@capacitor-community/admob": "8.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.0"
+  }
+}
